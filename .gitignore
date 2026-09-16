@@ -1,0 +1,4 @@
+# cached copy of the contest's pinned cmudict.dict
+.cmudict.cache
+.DS_Store
+node_modules/
