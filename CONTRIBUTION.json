@@ -1,7 +1,7 @@
 {
   "artifact_url": "https://github.com/pepedesigner/sonnet-viewer",
-  "commit": "9d187a805616741aed355333b2b59cca26779e0d",
+  "commit": "eea011f53d8b013c7d0f0f5a43b71fda986e20a7",
   "did": "did:key:z6Mkoi2tJ5JdcURNKQx8tKrU2HZ8Ad15CDcseknaXKbbhwZX",
   "schema": "technocore-contribution-proof-v1",
-  "signature": "tXw1Ef_nH2NkjeuWtXjaZgjQbt1lnsw30nP536kDpYTcNj768JAQJVbPpnismdlwFWCekPXSw-Ya9nyoSSZqCw"
+  "signature": "aewXwjLdDl32XaMGGHVS38xk764ac_EqvqmYmgEne-sxCKOpdrpVJTva02fiqOqcaKDWEW5nFShIiN7xde0eCw"
 }
