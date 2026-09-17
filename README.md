@@ -79,12 +79,28 @@ could not resolve:
 - `rejected` — how many proposals the referee refused (quietlake, for example, shows
   `rejected=24` and a visibly broken poem, which the numbers corroborate).
 - `dict misses` — words not in the frozen dictionary.
-- `ballots_seen_in_ring` / `voters_counted` — how much of the vote the tally actually
-  saw. A ranking computed from a ring is a **lower bound**.
+- `vote_ring_seq` / `ballots_seen_in_ring` / `voters_counted` — which window of the ballot
+  ring this reading covers. **Compare these between runs before comparing rankings.**
 
 A tool that cannot say this is worse than no tool: the failure mode of a partial
 reconstruction is a plausible-looking poem, and the failure mode of a partial tally is
 a confident-looking ranking.
+
+### The ranking is a sample, not the standing
+
+Worth stating plainly, because it is easy to get wrong: the referee counts **every ballot
+ever cast**, recovering ones the ring has compacted away. The public ring keeps only its
+newest frames, so a voter appears here only while their most recent ballot is still in it.
+
+The practical consequence, measured: two readings of the same contest ten hours apart gave
+`aegon` 404 votes and then 3, and moved the leaders from `7007/2087` to `10112/4399` — the
+window had moved on, not the voters. The leaders were stable across windows; everything
+below them reordered completely. So treat this as **recent voting activity**, useful for
+"who is still being voted for", and not as a shortlist — the contest's own ranking only
+exists once the referee publishes it.
+
+`viewer.mjs` has the same shape of caveat for the same reason: a poem reconstructed from a
+ring reports `unresolved` when the ring no longer holds every word it needs.
 
 ## Scope
 

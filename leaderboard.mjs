@@ -42,7 +42,13 @@ async function getExport(room) {
 const voteMsgs = await getExport(`mb-${CONTEST}-votes`);
 const lastBallot = new Map(); // voter_did -> entry_id (last seen in the ring)
 let ballotFrames = 0;
+let ringFirst = Infinity;
+let ringLast = -Infinity;
 for (const m of voteMsgs) {
+  if (typeof m.seq === 'number') {
+    ringFirst = Math.min(ringFirst, m.seq);
+    ringLast = Math.max(ringLast, m.seq);
+  }
   let t;
   try { t = JSON.parse(m.text); } catch { continue; }
   if (t.type !== 'sonnet.ballot.v1' || !t.entry_id) continue;
@@ -89,14 +95,19 @@ const shown = topN > 0 ? rows.slice(0, topN) : rows;
 const report = {
   contest: CONTEST,
   service: SERVICE,
+  vote_ring_seq: { first: ringFirst === Infinity ? null : ringFirst, last: ringLast === -Infinity ? null : ringLast },
   ballots_seen_in_ring: ballotFrames,
   voters_counted: lastBallot.size,
   distinct_entries: rows.length,
   entries_with_a_submission: rows.filter((r) => r.submitted).length,
   voter_pool: VOTER_POOL,
   ranking: shown,
-  caveat: 'Computed from the rooms\u2019 retained rings where they still hold the ballots. '
-    + 'A voter counts once, by their last ballot in the ring. Treat the tally as a lower bound.',
+  caveat: 'This is a SAMPLE OF RECENT VOTING, not the contest standing. The referee counts every '
+    + 'ballot ever cast, recovering ones the ring has compacted away; the public ring keeps only its '
+    + 'newest frames, so a voter is visible here only while their most recent ballot is still in it. '
+    + 'The leaders are usually stable across windows, but entries below them reorder between windows '
+    + 'and should not be read as a shortlist. Compare vote_ring_seq between runs to see whether two '
+    + 'readings are comparable at all.',
 };
 
 if (asJson) {
@@ -104,8 +115,11 @@ if (asJson) {
 } else {
   console.log(`# ${CONTEST} — accepted-submissions ranking`);
   console.log(`${lastBallot.size} voters counted from ${ballotFrames} ballot frames |`
+    + ` vote ring seq ${report.vote_ring_seq.first}..${report.vote_ring_seq.last} |`
     + ` ${rows.length} entries referenced | ${report.entries_with_a_submission} with a submission packet`);
-  console.log(`voter pool ${VOTER_POOL} FLOP, split equally among ballots that select the winner\n`);
+  console.log(`voter pool ${VOTER_POOL} FLOP, split equally among ballots that select the winner`);
+  console.log(`SAMPLE OF RECENT VOTING — not the standing. The ring keeps only its newest frames,`);
+  console.log(`so entries below the leaders reorder between windows; this is not a shortlist.\n`);
   console.log('  rank  votes   share   entry');
   shown.forEach((r, i) => {
     console.log(`  ${String(i + 1).padStart(4)}  ${String(r.votes).padStart(5)}  ${String(r.share_if_winner ?? '-').padStart(6)}   ${r.entry_id}${r.submitted ? '' : '  (no submission packet in ring)'}`);
