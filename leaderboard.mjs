@@ -24,12 +24,21 @@ async function getExport(room) {
   let lastErr;
   for (let i = 0; i < 3; i++) {
     try {
-      const r = await fetch(`${SERVICE}/r/${room}/export`, { signal: AbortSignal.timeout(120000) });
+      const r = await fetch(`${SERVICE}/r/${room}/export`, { signal: AbortSignal.timeout(180000) });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const raw = await r.text();
-      return raw.trim().split('\n').filter(Boolean).map((l) => {
+      const msgs = raw.trim().split('\n').filter(Boolean).map((l) => {
         try { return JSON.parse(l); } catch { return null; }
       }).filter(Boolean);
+      // The export is not streamed server-side (flop-labs/technocore-chat#861), and it is
+      // oldest-first, so a client timeout yields a well-formed PREFIX rather than an error.
+      // Check it actually reached the room head before trusting it.
+      const hj = await (await fetch(`${SERVICE}/r/${room}?format=json&limit=1`, { signal: AbortSignal.timeout(20000) })).json();
+      const mine = msgs.length ? msgs[msgs.length - 1].seq : -1;
+      if (typeof hj.last_seq === 'number' && mine < hj.last_seq) {
+        throw new Error(`truncated: export ends at seq ${mine}, room head is ${hj.last_seq}`);
+      }
+      return msgs;
     } catch (e) {
       lastErr = e;
       await new Promise((res) => setTimeout(res, 2000 * (i + 1)));

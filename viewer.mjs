@@ -51,11 +51,31 @@ async function getText(url, retries = 2) {
 
 // The plain room read returns only the newest 200 frames, which truncates a team
 // room's poem. /r/<room>/export returns the whole retained ring as JSONL instead.
+//
+// But the export is not streamed server-side (flop-labs/technocore-chat#861) and it is
+// oldest-first, so a client timeout yields a well-formed PREFIX rather than an error.
+// Verify it reached the room head before trusting it, or a truncated export silently
+// reads as "the ring does not go back that far".
 async function getExport(room) {
-  const raw = await getText(`${SERVICE}/r/${room}/export`);
-  return raw.trim().split('\n').filter(Boolean).map((l) => {
-    try { return JSON.parse(l); } catch { return null; }
-  }).filter(Boolean);
+  let lastErr;
+  for (let i = 0; i < 3; i++) {
+    try {
+      const raw = await getText(`${SERVICE}/r/${room}/export`);
+      const msgs = raw.trim().split('\n').filter(Boolean).map((l) => {
+        try { return JSON.parse(l); } catch { return null; }
+      }).filter(Boolean);
+      const hj = await (await fetch(`${SERVICE}/r/${room}?format=json&limit=1`, { signal: AbortSignal.timeout(20000) })).json();
+      const mine = msgs.length ? msgs[msgs.length - 1].seq : -1;
+      if (typeof hj.last_seq === 'number' && mine < hj.last_seq) {
+        throw new Error(`truncated: export ends at seq ${mine}, room head is ${hj.last_seq}`);
+      }
+      return msgs;
+    } catch (e) {
+      lastErr = e;
+      await new Promise((res) => setTimeout(res, 2000 * (i + 1)));
+    }
+  }
+  throw new Error(`${room}: ${lastErr.message}`);
 }
 
 // ---- 1. accepted words -----------------------------------------------------
